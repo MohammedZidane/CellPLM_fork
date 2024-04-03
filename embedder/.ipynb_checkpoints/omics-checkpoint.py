@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from ..utils.pe import select_pe_encoder
 from ..utils import create_norm, create_activation
 import numpy as np
-from ..utils.sparse import sparse_normalize, sparse_tpm
+# from ..utils.sparse import sparse_normalize, sparse_tpm
 
 class OmicsEmbedder(nn.Module):
     def __init__(self, pretrained_protein_list, num_hid, protein_emb=None, fix_embedding=False):
@@ -109,8 +109,9 @@ class OmicsEmbedder(nn.Module):
                 raise ValueError('The input protein size is not the same as the pretrained protein list. Please provide the input protein list.')
             protein_idx = torch.arange(x.shape[1]).long()
         protein_idx = protein_idx.to(x.device)
-        # print('protein_idx:', protein_idx)
-        # print('self.emb:', self.emb)
+        print('protein_idx.shape:', protein_idx.shape)
+        print('self.emb.shape:', self.emb.shape)
+        print('x.shape:', x.shape)
         feat = F.embedding(protein_idx, self.emb)
         feat = torch.matmul(x, feat)  # torch.sparse.mm, removed because we are NOT working with sparse (transcriptomics) data but proteomics
         return feat

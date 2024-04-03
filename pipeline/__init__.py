@@ -13,6 +13,7 @@ def load_pretrain(
         pretrain_prefix: str,
         overwrite_config: dict = None,
         pretrain_directory: str = './ckpt'):
+    print('in the load_pretrain function')
     config_path = os.path.join(pretrain_directory, f'{pretrain_prefix}.config.json')
     print('config_path:', config_path)
     ckpt_path = os.path.join(pretrain_directory, f'{pretrain_prefix}.best.ckpt')
@@ -31,15 +32,42 @@ def load_pretrain(
     model.load_state_dict(model_dict)
     return model
 
+def load_untrained_model(
+        pretrain_prefix: str,
+        overwrite_config: dict = None,
+        pretrain_directory: str = './ckpt'):
+    print('in the load_untrained_model function')
+    # Path to the configuration file.
+    config_path = os.path.join(pretrain_directory, f'{pretrain_prefix}.config.json')
+    print('config_path:', config_path)
+
+    # Load the model configuration.
+    with open(config_path, "r") as openfile:
+        config = json.load(openfile)
+    
+    # If there are any configurations to overwrite, update the config dictionary.
+    if overwrite_config:
+        config.update(overwrite_config)
+
+    # Initialize a new instance of the model with the loaded (or overwritten) configuration.
+    model = OmicsFormer(**config)
+
+    # The model is now initialized but not trained (weights are not loaded).
+
+    return model
 
 class Pipeline(ABC):
     def __init__(self,
                  pretrain_prefix: str,
                  overwrite_config: dict = None,
                  pretrain_directory: str = './ckpt',
+                 pretrain = True,
                  ):
         # Load pretrain model
-        self.model = load_pretrain(pretrain_prefix, overwrite_config, pretrain_directory)
+        if not pretrain:
+            self.model = load_pretrain(pretrain_prefix, overwrite_config, pretrain_directory)
+        else:
+            self.model = load_untrained_model(pretrain_prefix, overwrite_config, pretrain_directory)
         self.protein_list = None
         self.fitted = False
         self.eval_dict = {}

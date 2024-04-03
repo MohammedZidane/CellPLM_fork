@@ -40,6 +40,8 @@ class TranscriptomicDataset(Dataset):
         self.label_fields = label_fields
         self.order_required = order_required
         self.protein_list = adata.var.index.tolist()
+        print('adata internal:', adata)
+        print('self.protein_list:', self.protein_list)
 
         if self.batch_protein_list:
             assert 'batch' in adata.obs, 'Batch specific protein list is set but batch labels are not found in AnnData.obs.'

@@ -30,9 +30,18 @@ class AnnotationHead(nn.Module):
 
     def forward(self, x_dict):
         logits = self.mlp(x_dict['h'][x_dict['loss_mask']])
+        # print('len(x_dict[h]):', len(x_dict['h']))
+        # print('len(x_dict[loss_mask]):', len(x_dict['loss_mask']))
+
         pred = logits.argmax(1)
         if 'label' in x_dict:
+            # print('x_dict[label]:', x_dict['label'])
+            # print('len(x_dict[label]):', len(x_dict['label']))
+            # print('x_dict[loss_mask]:', x_dict['loss_mask'])
+            # print('len(x_dict[loss_mask]):', len(x_dict['loss_mask']))
             y = x_dict['label'][x_dict['loss_mask']].long()
+            # print('y:', y)
+            # print('len(y):', len(y))
             loss = self.ce_loss(logits, y)
             return {'pred': pred, 'latent': x_dict['h'], 'label': y}, loss
         else:
@@ -87,10 +96,45 @@ class EmbedderHead(nn.Module):
                  dropout=None, norm=None, batch_num=None, lib_size=None,
                  log_norm=False, **kwargs):
         super().__init__()
+        num_classes = out_dim
+        
+        self.ce_loss = nn.CrossEntropyLoss()
+        layers = [in_dim] + [hidden_dim] * (num_layers - 1) + [num_classes ] # out_dim = num_classes 
+        dropouts = [dropout] * len(layers)
+        self.mlp = buildNetwork(layers, dropouts)
 
     def forward(self, x_dict):
-        pred = x_dict['h']
-        return {'pred': pred, 'latent': x_dict['h']}, torch.tensor(0.).to(x_dict['h'].device)
+        print('x_dict.keys():', x_dict.keys())
+        logits = self.mlp(x_dict['h'][x_dict['loss_mask']])
+        # print('len(x_dict[h]):', len(x_dict['h']))
+        # print('len(x_dict[loss_mask]):', len(x_dict['loss_mask']))
+        print('logits:', logits)
+        pred = logits.argmax(1)
+        print('pred in forward embedderhead:', pred)
+        if 'label' in x_dict:
+            # print('x_dict[label]:', x_dict['label'])
+            # print('len(x_dict[label]):', len(x_dict['label']))
+            # print('x_dict[loss_mask]:', x_dict['loss_mask'])
+            # print('len(x_dict[loss_mask]):', len(x_dict['loss_mask']))
+            y = (x_dict['label'][x_dict['loss_mask']]).long()
+            # print('y:', y)
+            # print('len(y):', len(y))
+            loss = self.ce_loss(logits, y)
+            print('in the if of the forward of the embedderhead')
+            return {'pred': pred, 'latent': x_dict['h'], 'label': y}, loss#, logits
+        else:
+            return {'pred': pred, 'latent': x_dict['h']}, torch.tensor(float('nan'))#, logits
+
+    # def forward(self, x_dict):
+    #     logits = self.mlp(x_dict['h'][x_dict['loss_mask']])
+    #     pred = logits.argmax(1)
+    #     print('len(pred):', len(pred))
+    #     if 'label' in x_dict:
+    #         y = x_dict['label'][x_dict['loss_mask']].long()
+    #         loss = self.ce_loss(logits, y)
+    #         return {'pred': pred, 'latent': x_dict['h'], 'label': y}, loss
+    #     else:
+    #         return {'pred': pred, 'latent': x_dict['h']}, torch.tensor(float('nan'))
 
 class ImputationHead(nn.Module):
     def __init__(self, in_dim, hidden_dim, out_dim, num_layers, dropout, norm, batch_num, **kwargs):

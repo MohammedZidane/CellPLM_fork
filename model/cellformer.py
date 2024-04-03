@@ -11,6 +11,9 @@ from ..latent.adversarial import AdversarialLatentLayer
 from ..objective import Objectives
 from ..head import setup_head
 
+import torch.optim as optim
+
+
 class OmicsFormer(nn.Module):
     def __init__(self, protein_list, enc_mod, enc_hid, enc_layers, post_latent_dim, dec_mod, dec_hid, dec_layers,
                  out_dim, batch_num=0, dataset_num=0, platform_num=0, mask_type='input', model_dropout=0.1,
@@ -22,6 +25,9 @@ class OmicsFormer(nn.Module):
                  num_clusters=16, dae=True, lamda=0.5, mask_beta=False, **kwargs):
         super(OmicsFormer, self).__init__()
 
+        # # Initialize the optimizer for pretraining
+        # self.pretrain_optimizer = optim.Adam(self.parameters(), lr=0.001)
+        
         self.embedder = OmicsEmbeddingLayer(protein_list, enc_hid, norm, activation, model_dropout,
                                             pe_type, cat_pe, protein_emb, inject_covariate=input_covariate, batch_num=batch_num)
         self.protein_set = set(protein_list)
@@ -83,7 +89,8 @@ class OmicsFormer(nn.Module):
             self.pre_latent_norm = PreLatentNorm('ln', enc_hid)
         # self.post_latent_norm = nn.LayerNorm(post_latent_dim, dataset_num)
 
-    def forward(self, x_dict, input_protein_list=None, d_iter=False):
+    def forward(self, x_dict, input_protein_list=None, d_iter=False):  #, pretrain=self.pretrain
+        # if pretrain == False:
         if self.mask_type == 'input':
             x_dict = self.mask_model.apply_mask(x_dict)
         x_dict['h'] = self.embedder(x_dict, input_protein_list)
@@ -101,7 +108,7 @@ class OmicsFormer(nn.Module):
             return self.latent.d_train(x_dict)
         else:
             if self.head_type is not None:
-                out_dict, loss = self.head(x_dict)
+                out_dict, loss = self.head(x_dict) #, logits
                 out_dict['latent_loss'] = latent_loss.item() if torch.is_tensor(latent_loss) else latent_loss
                 out_dict['target_loss'] = loss.item()
             else:
@@ -109,7 +116,11 @@ class OmicsFormer(nn.Module):
                 loss = latent_loss + self.objective(out_dict, x_dict) #/ 1e4
                 out_dict['latent_loss'] = latent_loss.item() if torch.is_tensor(latent_loss) else latent_loss
                 out_dict['target_loss'] = loss.item() - out_dict['latent_loss']
-            return out_dict, loss
+            print('out_dict.keys() in cellformer:', out_dict.keys())
+            return out_dict, loss#, logits
+
+        # else:
+        #     return self.pretrain_forward(x_dict)
 
     def nondisc_parameters(self):
         other_params = []
@@ -119,3 +130,28 @@ class OmicsFormer(nn.Module):
             else:
                 print(pname)
         return other_params
+
+    # def pretrain_forward(self, x_dict):
+    #     print('pretrainin is happening!!!!')
+    #     """
+    #     Forward pass for pretraining.
+    #     Assumes a simple autoencoder task.
+    #     """
+    #     # Assuming an autoencoder-like task for pretraining
+    #     x_encoded = self.encoder(x_dict['h'])['hidden']  # Encode
+    #     x_reconstructed = self.decoder(x_encoded)  # Decode/reconstruct
+    #     return x_reconstructed
+
+    # def pretrain_step(self, x_dict):
+    #     """
+    #     Performs a single step of pretraining, including forward pass, loss calculation,
+    #     backpropagation, and parameter update.
+    #     """
+    #     self.pretrain_optimizer.zero_grad()  # Reset gradients
+    #     x_reconstructed = self.pretrain_forward(x_dict)  # Forward pass for pretraining
+    #     # Calculate pretraining loss (adjust based on your specific task and data)
+    #     pretrain_loss = F.mse_loss(x_reconstructed, x_dict['h'])  # Example using MSE loss
+    #     pretrain_loss.backward()  # Backpropagate loss
+    #     self.pretrain_optimizer.step()  # Update model weights
+    #     return pretrain_loss.item()  # Return the loss value
+

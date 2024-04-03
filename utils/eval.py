@@ -20,6 +20,10 @@ def downstream_eval(task, pred_labels, true_labels, num_classes=None, eval_mask=
                     topk=20, **kwargs):
     if task == 'annotation':
         return annotation_eval(pred_labels, true_labels, num_classes)
+    elif task == 'embedding':
+        # print('len(pred_labels):', len(pred_labels))
+        # print('len(true_labels):', len(true_labels))
+        return embedding_eval(pred_labels, true_labels, num_classes)
     elif task == 'denoising':
         return denoising_eval(pred_labels, true_labels, eval_mask, normalize)
     elif task == 'imputation':
@@ -86,6 +90,18 @@ def minimum_eval(adata):
 
 def annotation_eval(pred_labels, true_labels, num_classes=None):
     num_classes = len(true_labels.unique()) if num_classes is None else num_classes
+    acc = multiclass_accuracy(pred_labels, true_labels, num_classes).cpu().item()
+    f1_score = multiclass_f1_score(pred_labels, true_labels, num_classes).cpu().item()
+    precision = multiclass_precision(pred_labels, true_labels, num_classes).cpu().item()
+    recall = multiclass_recall(pred_labels, true_labels, num_classes).cpu().item()
+    return {'acc': acc, 'f1_score': f1_score, 'precision': precision, 'recall': recall}
+
+def embedding_eval(pred_labels, true_labels, num_classes=None):
+    # print('len(pred_labels) in embedding_eval:', len(pred_labels))
+    # print('len(true_labels) in embedding_eval:', len(true_labels))
+    num_classes = len(true_labels) if num_classes is None else num_classes #len(true_labels.unique())
+    # print('unique num_classes:', num_classes)
+
     acc = multiclass_accuracy(pred_labels, true_labels, num_classes).cpu().item()
     f1_score = multiclass_f1_score(pred_labels, true_labels, num_classes).cpu().item()
     precision = multiclass_precision(pred_labels, true_labels, num_classes).cpu().item()
